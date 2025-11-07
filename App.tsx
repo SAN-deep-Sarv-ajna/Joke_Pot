@@ -408,7 +408,9 @@ const App: React.FC = () => {
                 callbacks: {
                     onopen: () => {
                         const source = inputAudioContextRef.current!.createMediaStreamSource(streamRef.current!);
-                        const processor = inputAudioContextRef.current!.createScriptProcessor(0, 1, 1);
+                        // FIX: Set a specific buffer size (e.g., 4096) for createScriptProcessor instead of 0.
+                        // This aligns with Gemini API examples and provides more predictable audio processing behavior.
+                        const processor = inputAudioContextRef.current!.createScriptProcessor(4096, 1, 1);
                         scriptProcessorRef.current = processor;
 
                         processor.onaudioprocess = (e) => {
