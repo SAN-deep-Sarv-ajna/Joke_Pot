@@ -1,6 +1,7 @@
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { GoogleGenAI, Modality, LiveServerMessage, FunctionDeclaration, Type } from '@google/genai';
+// FIX: Add LiveSession to imports for stronger typing of the session promise.
+import { GoogleGenAI, Modality, LiveServerMessage, FunctionDeclaration, Type, LiveSession } from '@google/genai';
 import { TranscriptionEntry } from './types';
 import { decode, decodeAudioData, createPcmBlob } from './utils/audio';
 import CallButton from './components/RecordButton';
@@ -9,6 +10,9 @@ import TranscriptionPanel from './components/TranscriptionPanel';
 type AppCategory = 'Hindi' | 'Bihari Hindi' | 'Santa Banta' | 'Husband-Wife' | 'Hindi Horror' | 'Bihari Horror';
 type CallState = 'idle' | 'calling' | 'active' | 'ended';
 type AppTheme = 'jokes' | 'horror';
+// FIX: Define a specific type for sound effects for better type safety and code readability.
+type SoundEffect = 'connect' | 'disconnect' | 'pop' | 'creak' | 'whisper' | 'heartbeat' | 'wind' | 'thump';
+
 
 const CATEGORIES: AppCategory[] = ['Hindi', 'Bihari Hindi', 'Santa Banta', 'Husband-Wife', 'Hindi Horror', 'Bihari Horror'];
 
@@ -109,7 +113,8 @@ const App: React.FC = () => {
     const [callStartTime, setCallStartTime] = useState<number | null>(null);
     const [callDuration, setCallDuration] = useState<number>(0);
 
-    const sessionPromiseRef = useRef<Promise<any> | null>(null);
+    // FIX: Use the specific LiveSession type for the session promise reference instead of `any`.
+    const sessionPromiseRef = useRef<Promise<LiveSession> | null>(null);
     const inputAudioContextRef = useRef<AudioContext | null>(null);
     const outputAudioContextRef = useRef<AudioContext | null>(null);
     const masterGainRef = useRef<GainNode | null>(null);
@@ -122,7 +127,7 @@ const App: React.FC = () => {
     const isEndingRef = useRef(false); // Lock to prevent error race conditions
 
 
-    const playSound = useCallback((type: 'connect' | 'disconnect' | 'pop' | 'creak' | 'whisper' | 'heartbeat' | 'wind' | 'thump', loop: boolean = false) => {
+    const playSound = useCallback((type: SoundEffect, loop: boolean = false) => {
         if (!outputAudioContextRef.current || !masterGainRef.current) return;
         const audioCtx = outputAudioContextRef.current;
         if (audioCtx.state === 'suspended') {
@@ -439,7 +444,8 @@ const App: React.FC = () => {
                         if (message.toolCall) {
                             for (const fc of message.toolCall.functionCalls) {
                                 if (fc.name === 'playSoundEffect' && fc.args.soundName) {
-                                    playSound(fc.args.soundName as any, fc.args.loop === true);
+                                    // FIX: Use a specific type assertion instead of `any` for better type safety.
+                                    playSound(fc.args.soundName as SoundEffect, fc.args.loop === true);
                                     sessionPromiseRef.current?.then(s => s.sendToolResponse({
                                         functionResponses: { id: fc.id, name: fc.name, response: { result: 'ok' } }
                                     }));
