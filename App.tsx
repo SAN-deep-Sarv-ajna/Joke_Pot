@@ -364,6 +364,7 @@ const App: React.FC = () => {
             masterGainRef.current.connect(outputAudioContextRef.current.destination);
 
             
+            // FIX: Use process.env.API_KEY for the API key, as required by the coding guidelines.
             const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
 
             let systemInstruction = '';
@@ -537,9 +538,7 @@ const App: React.FC = () => {
     
     // --- Render Logic ---
 
-    // The API key is expected to be available as an environment variable.
-    // In a local environment, you might need a dev server that supports this (e.g., Vite).
-    // On Vercel, you will set this in the project's Environment Variables settings.
+    // FIX: The API key must be read from process.env.API_KEY per coding guidelines.
     const isApiKeyConfigured = !!process.env.API_KEY;
 
     if (!isApiKeyConfigured) {
@@ -550,10 +549,12 @@ const App: React.FC = () => {
                 </h1>
                 <div className="mt-6 w-full max-w-md bg-red-900/50 border border-red-700 text-red-300 px-4 py-3 rounded-lg text-sm" role="alert">
                     <strong className="font-bold">Action Needed: </strong>
+                    {/* FIX: Updated environment variable name in UI message. */}
                     <span className="block sm:inline">The <code>API_KEY</code> environment variable is not set.</span>
                 </div>
                 <p className="mt-4 text-lg text-slate-300 max-w-lg">
-                    This application requires a Google AI API key to function. Please configure it in your hosting provider's settings (e.g., Vercel Environment Variables).
+                    {/* FIX: Updated environment variable name in UI message. */}
+                    This application requires a Google AI API key. To deploy, set the <code>API_KEY</code> in your hosting provider's environment variables.
                 </p>
                  <p className="mt-2 text-sm text-slate-400 max-w-md">
                     For info on billing, visit{' '}
