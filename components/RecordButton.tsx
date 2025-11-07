@@ -16,9 +16,14 @@ interface CallButtonProps {
     isCallActive: boolean;
     onClick: () => void;
     disabled?: boolean;
+    theme: 'jokes' | 'horror';
 }
 
-const CallButton: React.FC<CallButtonProps> = ({ isCallActive, onClick, disabled }) => {
+const CallButton: React.FC<CallButtonProps> = ({ isCallActive, onClick, disabled, theme }) => {
+    const themeClasses = theme === 'jokes' 
+        ? 'bg-green-600 hover:bg-green-700 focus:ring-green-500 animate-pulse'
+        : 'bg-indigo-600 hover:bg-indigo-700 focus:ring-indigo-500 animate-pulse';
+    
     return (
         <button
             onClick={onClick}
@@ -26,7 +31,7 @@ const CallButton: React.FC<CallButtonProps> = ({ isCallActive, onClick, disabled
             className={`flex items-center justify-center h-20 w-20 rounded-full shadow-lg transition-all duration-300 ease-in-out focus:outline-none focus:ring-4 focus:ring-opacity-50 disabled:opacity-50 disabled:cursor-not-allowed ${
                 isCallActive
                     ? 'bg-red-600 hover:bg-red-700 focus:ring-red-500'
-                    : 'bg-green-600 hover:bg-green-700 focus:ring-green-500 animate-pulse'
+                    : themeClasses
             }`}
         >
             {isCallActive ? <EndCallIcon /> : <CallIcon />}

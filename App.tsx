@@ -1,15 +1,34 @@
 
+
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { GoogleGenAI, Modality, LiveServerMessage } from '@google/genai';
+import { GoogleGenAI, Modality, LiveServerMessage, FunctionDeclaration, Type } from '@google/genai';
 import { TranscriptionEntry } from './types';
 import { decode, decodeAudioData, createPcmBlob } from './utils/audio';
 import CallButton from './components/RecordButton';
 import TranscriptionPanel from './components/TranscriptionPanel';
 
-type JokeCategory = 'Hindi' | 'Bihari Hindi' | 'Santa Banta' | 'Husband-Wife';
+type AppCategory = 'Hindi' | 'Bihari Hindi' | 'Santa Banta' | 'Husband-Wife' | 'Hindi Horror' | 'Bihari Horror';
 type CallState = 'idle' | 'calling' | 'active' | 'ended';
+type AppTheme = 'jokes' | 'horror';
 
-const JOKE_CATEGORIES: JokeCategory[] = ['Hindi', 'Bihari Hindi', 'Santa Banta', 'Husband-Wife'];
+const CATEGORIES: AppCategory[] = ['Hindi', 'Bihari Hindi', 'Santa Banta', 'Husband-Wife', 'Hindi Horror', 'Bihari Horror'];
+
+// --- Tool Definition for Sound Effects ---
+const playSoundEffectFunctionDeclaration: FunctionDeclaration = {
+    name: 'playSoundEffect',
+    description: 'Plays a sound effect to enhance the horror story atmosphere. Use this for dramatic moments.',
+    parameters: {
+        type: Type.OBJECT,
+        properties: {
+            soundName: {
+                type: Type.STRING,
+                description: "The name of the sound effect to play. Available sounds: 'creak', 'whisper', 'heartbeat', 'wind', 'thump'.",
+            },
+        },
+        required: ['soundName'],
+    },
+};
+
 
 // --- Helper Components ---
 
@@ -33,11 +52,18 @@ const CallTimer: React.FC<{ startTime: number }> = ({ startTime }) => {
     return <p className="text-slate-400 text-lg">{formatTime(elapsedSeconds)}</p>;
 };
 
-const AIAvatar = () => (
-    <div className="w-32 h-32 bg-gradient-to-br from-amber-400 to-orange-600 rounded-full flex items-center justify-center shadow-lg mb-4">
-        <span className="text-6xl font-bold text-slate-900">😂</span>
-    </div>
-);
+const AIAvatar: React.FC<{theme: AppTheme}> = ({ theme }) => {
+    const jokeAvatar = "😂";
+    const horrorAvatar = "🌙";
+    const jokeBg = "bg-gradient-to-br from-amber-400 to-orange-600";
+    const horrorBg = "bg-gradient-to-br from-indigo-800 to-rose-900";
+
+    return (
+        <div className={`w-32 h-32 ${theme === 'jokes' ? jokeBg : horrorBg} rounded-full flex items-center justify-center shadow-lg mb-4`}>
+            <span className="text-6xl font-bold text-slate-900 drop-shadow-lg">{theme === 'jokes' ? jokeAvatar : horrorAvatar}</span>
+        </div>
+    );
+}
 
 
 // --- Main App Component ---
@@ -49,7 +75,13 @@ const App: React.FC = () => {
         callStateRef.current = callState;
     }, [callState]);
 
-    const [jokeCategory, setJokeCategory] = useState<JokeCategory>('Hindi');
+    const [category, setCategory] = useState<AppCategory>('Hindi');
+    const [theme, setTheme] = useState<AppTheme>('jokes');
+    
+    useEffect(() => {
+        setTheme(category.includes('Horror') ? 'horror' : 'jokes');
+    }, [category]);
+
     const [transcriptions, setTranscriptions] = useState<TranscriptionEntry[]>([]);
     
     const [hasApiKey, setHasApiKey] = useState(false);
@@ -82,7 +114,7 @@ const App: React.FC = () => {
         checkApiKey();
     }, []);
 
-    const playSound = useCallback((type: 'connect' | 'disconnect' | 'pop') => {
+    const playSound = useCallback((type: 'connect' | 'disconnect' | 'pop' | 'creak' | 'whisper' | 'heartbeat' | 'wind' | 'thump') => {
         if (!outputAudioContextRef.current) return;
         const audioCtx = outputAudioContextRef.current;
         if (audioCtx.state === 'suspended') {
@@ -94,30 +126,65 @@ const App: React.FC = () => {
         gainNode.connect(audioCtx.destination);
         oscillator.connect(gainNode);
 
+        const now = audioCtx.currentTime;
         switch (type) {
             case 'connect':
                 oscillator.type = 'sine';
-                oscillator.frequency.setValueAtTime(600, audioCtx.currentTime);
-                gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
-                oscillator.frequency.exponentialRampToValueAtTime(800, audioCtx.currentTime + 0.1);
-                gainNode.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.2);
+                oscillator.frequency.setValueAtTime(600, now);
+                gainNode.gain.setValueAtTime(0.1, now);
+                oscillator.frequency.exponentialRampToValueAtTime(800, now + 0.1);
+                gainNode.gain.exponentialRampToValueAtTime(0.0001, now + 0.2);
                 break;
             case 'disconnect':
                 oscillator.type = 'sine';
-                oscillator.frequency.setValueAtTime(800, audioCtx.currentTime);
-                gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
-                oscillator.frequency.exponentialRampToValueAtTime(600, audioCtx.currentTime + 0.1);
-                gainNode.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.2);
+                oscillator.frequency.setValueAtTime(800, now);
+                gainNode.gain.setValueAtTime(0.1, now);
+                oscillator.frequency.exponentialRampToValueAtTime(600, now + 0.1);
+                gainNode.gain.exponentialRampToValueAtTime(0.0001, now + 0.2);
                 break;
             case 'pop':
                  oscillator.type = 'sine';
-                 oscillator.frequency.setValueAtTime(440, audioCtx.currentTime);
-                 gainNode.gain.setValueAtTime(0.05, audioCtx.currentTime);
-                 gainNode.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.1);
+                 oscillator.frequency.setValueAtTime(440, now);
+                 gainNode.gain.setValueAtTime(0.05, now);
+                 gainNode.gain.exponentialRampToValueAtTime(0.0001, now + 0.1);
+                break;
+            case 'creak':
+                oscillator.type = 'sawtooth';
+                oscillator.frequency.setValueAtTime(200, now);
+                gainNode.gain.setValueAtTime(0.1, now);
+                oscillator.frequency.exponentialRampToValueAtTime(100, now + 0.5);
+                gainNode.gain.exponentialRampToValueAtTime(0.0001, now + 0.5);
+                break;
+            case 'whisper':
+                const bufferSize = audioCtx.sampleRate * 1;
+                const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+                const data = buffer.getChannelData(0);
+                for (let i = 0; i < bufferSize; i++) {
+                    data[i] = Math.random() * 2 - 1;
+                }
+                const source = audioCtx.createBufferSource();
+                source.buffer = buffer;
+                const filter = audioCtx.createBiquadFilter();
+                filter.type = 'bandpass';
+                filter.frequency.value = 4000;
+                filter.Q.value = 2;
+                source.connect(filter);
+                filter.connect(gainNode);
+                gainNode.gain.setValueAtTime(0.02, now);
+                gainNode.gain.exponentialRampToValueAtTime(0.0001, now + 1);
+                source.start(now);
+                source.stop(now + 1);
+                return; // Early return as we don't use the oscillator
+            case 'thump':
+                oscillator.type = 'sine';
+                oscillator.frequency.setValueAtTime(80, now);
+                gainNode.gain.setValueAtTime(0.3, now);
+                oscillator.frequency.exponentialRampToValueAtTime(40, now + 0.1);
+                gainNode.gain.exponentialRampToValueAtTime(0.0001, now + 0.1);
                 break;
         }
-        oscillator.start(audioCtx.currentTime);
-        oscillator.stop(audioCtx.currentTime + 0.3);
+        oscillator.start(now);
+        oscillator.stop(now + 1);
     }, []);
 
     const handleSelectKey = async () => {
@@ -199,18 +266,29 @@ const App: React.FC = () => {
             const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
 
             let systemInstruction = '';
-             switch(jokeCategory) {
+            let toolsConfig = undefined;
+             switch(category) {
+                // ... Joke prompts
                 case 'Hindi':
-                    systemInstruction = "You are 'Hasgulla,' a cheerful AI comedian calling your friend. Your goal is to have a short, friendly chat and then tell a great joke. START the conversation by greeting the user warmly in Hindi, for example: 'Namaste! Hasgulla bol raha hoon, kaise hain aap?' Then, WAIT for their response. After they reply, ask if they're ready for a joke, like 'Bahut badiya! To, ek mazedaar chutkula sunaya jaye?'. Only tell the joke after they agree. Your jokes should be short, clean, and varied (observational, wordplay, modern situations). After telling a joke, ask for feedback, like 'Kaisa laga? Ek aur ho jaye?' to keep the conversation going.";
+                    systemInstruction = "You are 'Hasgulla,' a sharp-witted AI comedian from Mumbai calling your friend. Your humor is relatable, modern, and incredibly clever. START the conversation with a friendly, casual greeting like, 'Arre yaar, Hasgulla here! Sab badhiya?' Then, WAIT for their response. After they reply, playfully ask if they're in the mood for a mind-blowing joke, like 'Kya bolta hai? Ekdum dimaag hila dene wala joke ho jaye?'. Tell the joke only after they agree. Your jokes MUST be top-tier, focusing on the hilarious realities of Indian life: office drama, Mumbai local train struggles, nosy aunties, online shopping fails, and the daily battle of explaining technology to parents. The punchline should be unexpected and genuinely funny. The goal is a loud laugh, not a polite chuckle. After the joke, ask something cool like 'Kaisa tha? Laga na 440 volt ka jhatka?' to keep the vibe going.";
                     break;
                 case 'Bihari Hindi':
-                    systemInstruction = "You are 'Bihari Babu,' a fun-loving AI from Bihar calling a friend to share some laughs. Your style is authentic Bihari Hindi. START the conversation with a friendly local greeting, like 'Arre hum Bihari Babu bol rahe hain! Ka haal ba?'. WAIT for the user to respond. After their response, ask if they want to hear a joke, using phrases like 'Chaliye, tanik hansi-mazaak ho jaye? Ek garda joke suniye?'. Only tell the joke after they agree. Your jokes should be about Bihar's culture, food, and daily life, using common Bihari words ('ka ba?', 'bujhla', 'gardaa'). After the joke, ask 'Maza aail? Ki ek aur suniyega?' to continue the chat.";
+                    systemInstruction = "You are 'Bihari Babu,' the undisputed king of comedy from Patna, calling your friend to share some epic laughs. Your humor is pure, authentic Bihari swag. START with a power-packed local greeting like, 'Hansi ke samrat, Bihari Babu bol rahe hain! Arre... ka haal chaal ba? Sab theek-e-na?'. WAIT for their reply. Then, ask if they can handle a truly mind-blowing joke: 'Suna hai, ek aisa joke hai jisse maatha jhanjhana jaega. Sunoge?'. Only tell the joke if they say yes. Your jokes must be pure gold, hitting on real Bihari experiences: the craze for government jobs (Sarkari Naukri), the eternal love for Litti-Chokha, hilarious local slang, and the daily adventures of a Bihari outside Bihar. The punchline must be 'ekdum garda' – sharp, witty, and totally unexpected. After the joke, ask with swag, 'Bujhla? Aaya na maza? Ki ek aur ho jaye?'.";
                     break;
                 case 'Santa Banta':
                     systemInstruction = "You are a specialist in 'Santa Banta' jokes. Your task is to generate short, classic, and funny jokes featuring the characters Santa and Banta. Start by asking the user 'Santa Banta ka ek joke sunenge?' and wait for them to say yes before telling the joke. The jokes should be in simple Hindi or Hinglish, reflecting their characteristic naive and silly conversations. Keep the jokes clean and light-hearted.";
                     break;
                 case 'Husband-Wife':
                     systemInstruction = "You are an expert comedian on 'Husband-Wife' jokes (Pati-Patni jokes). Your goal is to tell short, relatable, and humorous jokes about everyday married life. Start by asking the user 'Pati-Patni ka ek mazedaar joke sunaya jaye?' and wait for them to agree before telling the joke. The tone should be light-hearted and affectionate, not mean-spirited. The language should be conversational Hindi. Keep the jokes clean and suitable for a family audience.";
+                    break;
+                // --- Horror prompts ---
+                case 'Hindi Horror':
+                    toolsConfig = [{functionDeclarations: [playSoundEffectFunctionDeclaration]}];
+                    systemInstruction = "You are a masterful storyteller of Indian horror. Your voice is calm but chilling. Start by setting a dark, suspenseful scene. Greet the user with something ominous like 'Aapne is andhere mein call karke... achha nahi kiya.' WAIT for their response. Then, ask if they are brave enough to hear a truly terrifying story: 'Kya aap ek aisi kahani sunne ki himmat rakhte hain, jise sunkar raaton ki neend udd jaati hai?'. Use long pauses. Your story should be rooted in Indian folklore and superstitions—haunted havelis, chudails, desolate highways. Build suspense slowly. To make it scarier, you MUST call the `playSoundEffect` function at key moments. Use 'creak' for doors, 'whisper' for ghostly voices, 'thump' for sudden noises. Use them sparingly for maximum impact.";
+                    break;
+                case 'Bihari Horror':
+                    toolsConfig = [{functionDeclarations: [playSoundEffectFunctionDeclaration]}];
+                    systemInstruction = "You are a storyteller from a village in Bihar, known for your terrifying local horror stories (bhoot-pret ki kahani). Your tone is that of an old, wise person sharing a dark secret. Greet the user with a warning: 'Kaun bol raha hai? Is samay phone karna theek nahi hai...'. WAIT for them to reply. Then, ask if they dare to listen: 'Hamaare gaon ki ek asli kahani hai, sunoge toh dar jaoge. Sunna hai?'. Your story must feel real and grounded in Bihari culture—a haunted peepal tree, a 'nishi' (night spirit), or a strange event during Chhath Puja. Build the atmosphere slowly. You MUST use the `playSoundEffect` tool to create terrifying moments. Use 'wind' for eerie atmosphere, 'heartbeat' when the character is scared, and 'thump' for a sudden shock.";
                     break;
             }
 
@@ -223,11 +301,12 @@ const App: React.FC = () => {
                     systemInstruction,
                     inputAudioTranscription: {},
                     outputAudioTranscription: {},
+                    tools: toolsConfig,
                 },
                 callbacks: {
                     onopen: () => {
                         const source = inputAudioContextRef.current!.createMediaStreamSource(streamRef.current!);
-                        const processor = inputAudioContextRef.current!.createScriptProcessor(2048, 1, 1);
+                        const processor = inputAudioContextRef.current!.createScriptProcessor(0, 1, 1);
                         scriptProcessorRef.current = processor;
 
                         processor.onaudioprocess = (e) => {
@@ -255,6 +334,17 @@ const App: React.FC = () => {
                             setPartialOutput(currentOutputRef.current);
                         }
 
+                        if (message.toolCall) {
+                            for (const fc of message.toolCall.functionCalls) {
+                                if (fc.name === 'playSoundEffect' && fc.args.soundName) {
+                                    playSound(fc.args.soundName as any);
+                                    sessionPromiseRef.current?.then(s => s.sendToolResponse({
+                                        functionResponses: { id: fc.id, name: fc.name, response: { result: 'ok' } }
+                                    }));
+                                }
+                            }
+                        }
+
                         if (message.serverContent?.interrupted) {
                             outputSourcesRef.current.forEach(source => {
                                 try { source.stop(); } catch (e) {}
@@ -267,7 +357,7 @@ const App: React.FC = () => {
                             const fullInput = currentInputRef.current;
                             const fullOutput = currentOutputRef.current;
                             
-                            if (fullOutput.trim()) {
+                            if (fullOutput.trim() && theme === 'jokes') {
                                 playSound('pop');
                             }
 
@@ -350,7 +440,7 @@ const App: React.FC = () => {
         return (
             <div className="min-h-screen bg-gradient-to-br from-slate-900 to-indigo-900 flex flex-col items-center justify-center text-center p-4">
                 <h1 className="text-4xl md:text-5xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-amber-400 to-orange-500">
-                    Welcome to Hindi Jokes AI
+                    Welcome to AI Conversations
                 </h1>
                 <p className="mt-4 text-lg text-slate-300">To get started, please select your Google AI API key.</p>
                 <p className="mt-2 text-sm text-slate-400 max-w-md">
@@ -369,22 +459,28 @@ const App: React.FC = () => {
         );
     }
     
+    const themeBg = theme === 'jokes' ? 'bg-slate-800' : 'bg-black';
+    const themeBorder = theme === 'jokes' ? 'border-slate-700' : 'border-rose-900/50';
+    const mainTitle = theme === 'jokes' ? 'Hindi Jokes AI' : 'Raat Ki Awaaz';
+    const subTitle = theme === 'jokes' ? '+91 1800 HASGULLA' : 'An Unknown Number';
+    const subTitleColor = theme === 'jokes' ? 'text-indigo-400' : 'text-rose-400';
+
     return (
-        <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center p-4">
-            <div className="w-full max-w-md h-[90vh] max-h-[800px] bg-slate-800 rounded-3xl shadow-2xl flex flex-col overflow-hidden border-4 border-slate-700">
+        <div className={`min-h-screen ${theme === 'jokes' ? 'bg-slate-900' : 'bg-gray-900'} flex flex-col items-center justify-center p-4 transition-colors duration-500`}>
+            <div className={`w-full max-w-md h-[90vh] max-h-[800px] ${themeBg} rounded-3xl shadow-2xl flex flex-col overflow-hidden border-4 ${themeBorder} transition-colors duration-500`}>
                 
                 {/* --- Call Screen Content --- */}
                 <div className="flex-grow flex flex-col items-center justify-between p-8 text-center">
                     
                     {/* Header Info */}
                     <div className="flex flex-col items-center">
-                         {callState !== 'idle' && <AIAvatar />}
+                         {callState !== 'idle' && <AIAvatar theme={theme} />}
                          <h1 className="text-3xl font-bold text-white">
-                             Hindi Jokes AI
+                             {mainTitle}
                          </h1>
                          
                          {callState === 'idle' && (
-                             <p className="text-lg text-indigo-400 mt-1">+91 1800 HASGULLA</p>
+                             <p className={`text-lg ${subTitleColor} mt-1`}>{subTitle}</p>
                          )}
 
                          {callState === 'calling' && (
@@ -402,20 +498,20 @@ const App: React.FC = () => {
                     
                     {callState === 'idle' && (
                         <div className="flex flex-col items-center">
-                            <AIAvatar />
+                            <AIAvatar theme={theme} />
                              <div className="mt-8 flex justify-center items-center flex-wrap gap-2">
-                                <span className="text-slate-400 font-medium w-full text-center mb-2">Select a Joke Category</span>
-                                {JOKE_CATEGORIES.map((category) => (
+                                <span className="text-slate-400 font-medium w-full text-center mb-2">Select a Category</span>
+                                {CATEGORIES.map((cat) => (
                                     <button
-                                        key={category}
-                                        onClick={() => setJokeCategory(category)}
-                                        className={`px-3 py-1.5 text-sm font-semibold rounded-md transition-colors ${
-                                            jokeCategory === category
-                                                ? 'bg-amber-500 text-slate-900 shadow-lg'
+                                        key={cat}
+                                        onClick={() => setCategory(cat)}
+                                        className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors ${
+                                            category === cat
+                                                ? cat.includes('Horror') ? 'bg-rose-600 text-white shadow-lg' : 'bg-amber-500 text-slate-900 shadow-lg'
                                                 : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
                                         }`}
                                     >
-                                        {category}
+                                        {cat}
                                     </button>
                                 ))}
                             </div>
@@ -428,6 +524,7 @@ const App: React.FC = () => {
                                 transcriptions={transcriptions} 
                                 partialInput={partialInput}
                                 partialOutput={partialOutput}
+                                theme={theme}
                             />
                         </div>
                     )}
@@ -438,6 +535,7 @@ const App: React.FC = () => {
                             isCallActive={callState === 'active' || callState === 'calling'}
                             onClick={handleCallToggle}
                             disabled={callState === 'ended'}
+                            theme={theme}
                         />
                     </div>
                 </div>
