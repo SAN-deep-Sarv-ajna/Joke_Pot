@@ -1,6 +1,6 @@
 {
-  "name": "Hindi Jokes & Stories AI",
-  "description": "A real-time conversational AI that tells jokes or suspenseful horror stories in Hindi, powered by the Gemini Live API with dynamic sound effects.",
+  "name": "Baishaha Joke Wala by SANDEEP",
+  "description": "Experience Baishaha Joke Wala by SANDEEP, a real-time conversational AI that tells jokes or suspenseful horror stories in Hindi, powered by the Gemini Live API with dynamic sound effects.",
   "requestFramePermissions": [
     "microphone"
   ]

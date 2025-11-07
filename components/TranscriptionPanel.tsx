@@ -7,17 +7,18 @@ interface TranscriptionPanelProps {
     transcriptions: TranscriptionEntry[];
     partialInput: string;
     partialOutput: string;
+    isAiThinking: boolean;
     theme: 'jokes' | 'horror';
 }
 
-const TranscriptionPanel: React.FC<TranscriptionPanelProps> = ({ transcriptions, partialInput, partialOutput, theme }) => {
+const TranscriptionPanel: React.FC<TranscriptionPanelProps> = ({ transcriptions, partialInput, partialOutput, isAiThinking, theme }) => {
     const scrollRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         if (scrollRef.current) {
             scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
         }
-    }, [transcriptions, partialInput, partialOutput]);
+    }, [transcriptions, partialInput, partialOutput, isAiThinking]);
 
     const userColors = theme === 'jokes' 
         ? 'text-indigo-400 bg-indigo-500' 
@@ -68,6 +69,22 @@ const TranscriptionPanel: React.FC<TranscriptionPanelProps> = ({ transcriptions,
                         </div>
                         <div className={`max-w-xs md:max-w-md lg:max-w-lg rounded-xl px-4 py-2 ${aiColors.split(' ')[1]} text-slate-200 rounded-bl-none`}>
                             <p className="text-sm md:text-base">{partialOutput}</p>
+                        </div>
+                    </div>
+                )}
+
+                {/* Render AI thinking indicator */}
+                {isAiThinking && (
+                     <div className="flex flex-col items-start">
+                        <div className={`text-sm font-bold mb-1 ${aiColors.split(' ')[0]}`}>
+                           AI
+                        </div>
+                        <div className={`max-w-xs md:max-w-md lg:max-w-lg rounded-xl px-4 py-2 ${aiColors.split(' ')[1]} text-slate-200 rounded-bl-none`}>
+                           <div className="flex space-x-1.5 py-1">
+                                <span className={`w-2 h-2 ${theme === 'jokes' ? 'bg-teal-400' : 'bg-cyan-400'} rounded-full animate-pulse`}></span>
+                                <span className={`w-2 h-2 ${theme === 'jokes' ? 'bg-teal-400' : 'bg-cyan-400'} rounded-full animate-pulse !animation-delay-150`}></span>
+                                <span className={`w-2 h-2 ${theme === 'jokes' ? 'bg-teal-400' : 'bg-cyan-400'} rounded-full animate-pulse !animation-delay-300`}></span>
+                           </div>
                         </div>
                     </div>
                 )}
