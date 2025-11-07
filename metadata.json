@@ -1,0 +1,7 @@
+{
+  "name": "Hindi Jokes AI",
+  "description": "A real-time conversational AI that tells jokes in Hindi, powered by the Gemini Live API. Just click the button and ask for a joke!",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}
