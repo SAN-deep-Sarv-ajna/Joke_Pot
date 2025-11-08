@@ -1,7 +1,7 @@
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-// FIX: Add LiveSession to imports for stronger typing of the session promise.
-import { GoogleGenAI, Modality, LiveServerMessage, FunctionDeclaration, Type, LiveSession } from '@google/genai';
+// FIX: Remove LiveSession from imports as it's not a public type.
+import { GoogleGenAI, Modality, LiveServerMessage, FunctionDeclaration, Type } from '@google/genai';
 import { TranscriptionEntry } from './types';
 import { decode, decodeAudioData, createPcmBlob } from './utils/audio';
 import CallButton from './components/RecordButton';
@@ -113,8 +113,8 @@ const App: React.FC = () => {
     const [callStartTime, setCallStartTime] = useState<number | null>(null);
     const [callDuration, setCallDuration] = useState<number>(0);
 
-    // FIX: Use the specific LiveSession type for the session promise reference instead of `any`.
-    const sessionPromiseRef = useRef<Promise<LiveSession> | null>(null);
+    // FIX: Use `any` for the session promise reference as LiveSession is not a public type.
+    const sessionPromiseRef = useRef<Promise<any> | null>(null);
     const inputAudioContextRef = useRef<AudioContext | null>(null);
     const outputAudioContextRef = useRef<AudioContext | null>(null);
     const masterGainRef = useRef<GainNode | null>(null);
@@ -267,6 +267,11 @@ const App: React.FC = () => {
     const endCall = useCallback(async (errorMsg?: string) => {
         if (isEndingRef.current) return; // Prevent multiple executions
         isEndingRef.current = true; // Engage the lock
+        
+        // FIX: Use the errorMsg parameter to log errors for easier debugging.
+        if (errorMsg) {
+            console.error("Call ended due to an error:", errorMsg);
+        }
 
         playSound('disconnect');
         setCallState('ended');
@@ -440,17 +445,19 @@ const App: React.FC = () => {
                             currentOutputRef.current += message.serverContent.outputTranscription.text;
                             setPartialOutput(currentOutputRef.current);
                         }
-
-                        if (message.toolCall) {
+                        
+                        // FIX: Add optional chaining to safely access functionCalls.
+                        if (message.toolCall?.functionCalls) {
                             for (const fc of message.toolCall.functionCalls) {
-                                if (fc.name === 'playSoundEffect' && fc.args.soundName) {
-                                    // FIX: Use a specific type assertion instead of `any` for better type safety.
+                                // FIX: Add check for fc.args before accessing its properties.
+                                if (fc.name === 'playSoundEffect' && fc.args?.soundName) {
                                     playSound(fc.args.soundName as SoundEffect, fc.args.loop === true);
                                     sessionPromiseRef.current?.then(s => s.sendToolResponse({
                                         functionResponses: { id: fc.id, name: fc.name, response: { result: 'ok' } }
                                     }));
                                 }
-                                if (fc.name === 'setAmbianceVolume' && typeof fc.args.volume === 'number') {
+                                // FIX: Add check for fc.args before accessing its properties.
+                                if (fc.name === 'setAmbianceVolume' && fc.args && typeof fc.args.volume === 'number') {
                                     if (ambientGainRef.current && outputAudioContextRef.current) {
                                         const newVolume = Math.max(0, Math.min(0.8, fc.args.volume)); // Clamp volume
                                         ambientGainRef.current.gain.exponentialRampToValueAtTime(newVolume, outputAudioContextRef.current.currentTime + 0.5);
@@ -494,8 +501,11 @@ const App: React.FC = () => {
                             setPartialInput('');
                             setPartialOutput('');
                         }
-
-                        const base64Audio = message.serverContent?.modelTurn?.parts[0]?.inlineData?.data;
+                        
+                        // FIX: Safely access audio data with an explicit check.
+                        const parts = message.serverContent?.modelTurn?.parts;
+                        const base64Audio = (parts && parts.length > 0) ? parts[0]?.inlineData?.data : undefined;
+                        
                         if (base64Audio) {
                             if (isAiThinking) setIsAiThinking(false);
                             const audioContext = outputAudioContextRef.current!;
